@@ -1,0 +1,174 @@
+"""Core encryption/decryption functions (v2).
+Supports optional master_key usage (master_key_enabled flag).
+"""
+from __future__ import annotations
+
+import base64
+import hashlib
+import json
+import secrets
+from typing import List, Tuple
+
+from .utils import derive_keystream, permutation_indices, apply_permutation, invert_permutation
+
+class DecryptionError(Exception):
+    pass
+
+def _seed_from(master_key: bytes, salt: bytes) -> int:
+    # Convert SHA256(master_key || salt) to an int for seeding random.Random
+    h = hashlib.sha256()
+    h.update(master_key)
+    h.update(b"::")
+    h.update(salt)
+    return int.from_bytes(h.digest(), "big")
+
+def encrypt_text(plaintext: str, config: dict, return_meta: bool = False) -> Tuple[str, dict]:
+    """
+    Encrypt plaintext according to configuration and return a compact cipher string.
+    If return_meta is True, also return a metadata dict with level/rounds/salt_length/master_key_used.
+    The cipher is: base64( json({v, lvl, mk, salts:[hex...], payload: base64(payload_bytes)}) )
+    """
+    if not isinstance(plaintext, str):
+        raise TypeError("plaintext must be a str")
+
+    level = config.get("level", 2)
+    level_key = str(level)
+    levels = config.get("levels", {})
+    if level_key not in levels:
+        raise ValueError(f"Unknown level '{level}' in config")
+
+    rounds = int(levels[level_key]["rounds"])
+    salt_length = int(levels[level_key]["salt_length"])
+
+    mk_enabled = bool(config.get("master_key_enabled", True))
+    master_key_raw = config.get("master_key", "") if mk_enabled else ""
+    master_key = master_key_raw.encode("utf-8")
+
+    # If master key is enabled but empty, raise error
+    if mk_enabled and len(master_key) == 0:
+        raise ValueError("master_key is enabled in config but master_key is empty. Provide a master_key or set master_key_enabled to false.")
+
+    data = plaintext.encode("utf-8")
+    salts: List[bytes] = []
+
+    # Perform N rounds of (XOR keystream -> permutation)
+    for _ in range(rounds):
+        salt = secrets.token_bytes(salt_length)
+        salts.append(salt)
+
+        # XOR with keystream (master_key may be empty if disabled)
+        ks = derive_keystream(master_key, salt, len(data))
+        data = bytes([b ^ k for b, k in zip(data, ks)])
+
+        # deterministic permutation using seed derived from master_key + salt
+        seed = _seed_from(master_key, salt)
+        indices = permutation_indices(len(data), seed)
+        data = apply_permutation(data, indices)
+
+    # Final payload encoding
+    payload_b64 = base64.b64encode(data).decode("ascii")
+    salts_hex = [s.hex() for s in salts]
+
+    container = {
+        "v": 2,
+        "lvl": level_key,
+        "mk": bool(mk_enabled),
+        "salts": salts_hex,
+        "payload": payload_b64,
+    }
+
+    json_bytes = json.dumps(container, separators=(",", ":")).encode("utf-8")
+    final = base64.b64encode(json_bytes).decode("ascii")
+
+    meta = {
+        "level": int(level_key),
+        "rounds": rounds,
+        "salt_length": salt_length,
+        "master_key_used": bool(mk_enabled),
+        "salts_count": len(salts_hex),
+    }
+
+    if return_meta:
+        return final, meta
+    return final
+
+def decrypt_text(cipher: str, config: dict) -> str:
+    """
+    Decrypt the cipher string created by `encrypt_text` and return plaintext.
+    Raises DecryptionError on failure.
+    """
+    if not isinstance(cipher, str):
+        raise TypeError("cipher must be a str")
+
+    # Load container
+    try:
+        json_bytes = base64.b64decode(cipher.encode("ascii"))
+        container = json.loads(json_bytes)
+    except Exception as e:
+        raise DecryptionError("input is not a valid cipher (base64/json decode failed)") from e
+
+    if container.get("v") != 2:
+        raise DecryptionError("unsupported cipher version")
+
+    mk_flag = bool(container.get("mk", False))
+
+    # Decide which master_key to use: if mk_flag True, require one from config/env
+    if mk_flag:
+        master_key_raw = config.get("master_key", "")
+        master_key = master_key_raw.encode("utf-8")
+        if len(master_key) == 0:
+            raise DecryptionError("cipher requires a master_key to decrypt but none provided in config or environment")
+    else:
+        # master key was not used during encryption; ignore config master_key
+        master_key = b""
+
+    salts_hex = container.get("salts")
+    payload_b64 = container.get("payload")
+    if not isinstance(salts_hex, list) or not isinstance(payload_b64, str):
+        raise DecryptionError("cipher missing required fields")
+
+    try:
+        data = base64.b64decode(payload_b64.encode("ascii"))
+    except Exception as e:
+        raise DecryptionError("payload is not valid base64") from e
+
+    # Reverse rounds in reverse order
+    for salt_hex in reversed(salts_hex):
+        salt = bytes.fromhex(salt_hex)
+        seed = _seed_from(master_key, salt)
+        indices = permutation_indices(len(data), seed)
+
+        # invert permutation
+        data = invert_permutation(data, indices)
+
+        # XOR with keystream
+        ks = derive_keystream(master_key, salt, len(data))
+        data = bytes([b ^ k for b, k in zip(data, ks)])
+
+    try:
+        return data.decode("utf-8")
+    except Exception as e:
+        raise DecryptionError("decrypted bytes could not be decoded as UTF-8") from e
+
+def inspect_cipher_meta(cipher: str) -> dict:
+    """Return basic metadata from the cipher without requiring config or master key.
+    Parses the top-level container to get version, level and mk flag. Also returns rounds/salt_length if level found in global default mapping.
+    """
+    try:
+        json_bytes = base64.b64decode(cipher.encode("ascii"))
+        container = json.loads(json_bytes)
+    except Exception:
+        return {}
+
+    meta = {
+        "v": container.get("v"),
+        "lvl": container.get("lvl"),
+        "mk": container.get("mk", False),
+        "salts_count": len(container.get("salts", [])),
+    }
+    # Try to map level to rounds/salt_length from a small built-in mapping
+    level = container.get("lvl")
+    mapping = {"1": {"rounds":1, "salt_length":4}, "2": {"rounds":2, "salt_length":8}, "3": {"rounds":4, "salt_length":12}}
+    if level in mapping:
+        meta.update(mapping[level])
+    return meta

@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "master_key_enabled": true,
+  "master_key": "replace-this-with-your-own-secret-key",
+  "level": 2,
+  "levels": {
+    "1": {
+      "rounds": 1,
+      "salt_length": 4
+    },
+    "2": {
+      "rounds": 2,
+      "salt_length": 8
+    },
+    "3": {
+      "rounds": 4,
+      "salt_length": 12
+    }
+  },
+  "password_enabled": false,
+  "password": "",
+  "pbkdf2_iters": 100000
+}

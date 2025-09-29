@@ -1,0 +1,17 @@
+Five 256-bit keys (keep them secret):
+
+Key 1 (base64): D2HwZOm9XWZSyERJogQXA9o2Rj6jVJZdkQPL7GS6hJg=
+Key 1 (hex): 0f61f064e9bd5d6652c84449a2041703da36463ea354965d9103cbec64ba8498
+
+Key 2 (base64): VvWp0ImN+rIhZ+ZvTmFXU1Jx4Qft9x8j3OCeykXvaBs=
+Key 2 (hex): 56f5a9d0898dfab22167e66f4e6157535271e107edf71f23dce09eca45ef681b
+
+Key 3 (base64): ezMFn+QQ9FeMJ3dTktFRqEGnYWjwmH3yXlH1xh27tcU=
+Key 3 (hex): 7b33059fe410f4578c27775392d151a841a76168f0987df25e51f5c61dbbb5c5
+
+Key 4 (base64): WuHfrPcug0VUutv9AdRTEa9V67EZAPCuG2aJ6emikp8=
+Key 4 (hex): 5ae1dfacf72e834554badbfd01d45311af55ebb11900f0ae1b6689e9e9a2929f
+
+Key 5 (base64): 0+wqMGAajuCzOtekM0MiPbxTOOu9bvv84uRJp8MgkBs=
+Key 5 (hex): d3ec2a30601a8ee0b33ad7a43343223dbc5338ebbd6efbfce2e449a7c320901b
+
