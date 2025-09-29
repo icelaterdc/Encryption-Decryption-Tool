@@ -1,4 +1,4 @@
-Five 256-bit keys (keep them secret):
+Sample Five 256-bit keys (keep them secret):
 
 Key 1 (base64): D2HwZOm9XWZSyERJogQXA9o2Rj6jVJZdkQPL7GS6hJg=
 Key 1 (hex): 0f61f064e9bd5d6652c84449a2041703da36463ea354965d9103cbec64ba8498
