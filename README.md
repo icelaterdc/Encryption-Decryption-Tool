@@ -244,5 +244,3 @@ The tool serializes a JSON container and base64-encodes it. A typical container 
 
 ## 13) License
 MIT — see `LICENSE` file.
-
----
