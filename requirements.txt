@@ -1,1 +1,1 @@
-pyperclip
+# No external dependencies by default.
