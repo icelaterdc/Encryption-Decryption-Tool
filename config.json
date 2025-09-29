@@ -1,7 +1,7 @@
 {
-  "version": 2,
-  "master_key_enabled": true,
-  "master_key": "replace-this-with-your-own-secret-key",
+  "version": 3,
+  "master_key_enabled": false,
+  "master_key": "",
   "level": 2,
   "levels": {
     "1": {
