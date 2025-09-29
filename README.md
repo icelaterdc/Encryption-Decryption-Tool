@@ -1,4 +1,4 @@
-# 🔐 Modular Python Encryptor/Decryptor Tool
+# Modular Python Encryptor/Decryptor Tool
 
 > **This document explains how the encryptor works, how to configure it, and best practices for secure use.**
 
