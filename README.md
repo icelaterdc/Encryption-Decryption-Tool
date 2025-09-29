@@ -246,10 +246,3 @@ The tool serializes a JSON container and base64-encodes it. A typical container 
 MIT — see `LICENSE` file.
 
 ---
-
-If you'd like, I can now:
-- Add an explicit **fallback** behavior for decryption (try PBKDF2 if present, else master key; or try master key if password missing); or
-- Implement **combined-key mode** (XOR or HKDF join of PBKDF2 key + master_key) for extra security, or
-
-Tell me which of the above you'd like and I'll update the canvas accordingly.
-
